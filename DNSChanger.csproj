@@ -6,7 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>dns.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="dns.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="9.0.3" />
