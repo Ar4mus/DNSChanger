@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35828.75 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DNSChanger", "DNSChanger.csproj", "{77688FDC-AF92-4E6C-86E7-6F6A9D04A0E4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77688FDC-AF92-4E6C-86E7-6F6A9D04A0E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77688FDC-AF92-4E6C-86E7-6F6A9D04A0E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77688FDC-AF92-4E6C-86E7-6F6A9D04A0E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77688FDC-AF92-4E6C-86E7-6F6A9D04A0E4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {021F48B3-6FA4-435F-B963-7CE365386345}
+	EndGlobalSection
+EndGlobal
