@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Diagnostics;
 using System.Management;
+using System.Windows.Input;
 
 namespace DNSChanger
 {
@@ -88,26 +89,37 @@ namespace DNSChanger
         /// Handles the click event for setting the selected DNS.
         /// If 'Automatic' is selected, resets DNS settings.
         /// </summary>
-        private void SetDnsButton_Click(object sender, RoutedEventArgs e)
+        private async void SetDnsButton_Click(object sender, RoutedEventArgs e)
         {
+            Mouse.OverrideCursor = Cursors.Wait;
+            this.IsEnabled = false;
+
             if (DnsComboBox.SelectedItem is DnsEntry selectedDns)
             {
                 string networkAdapter = GetActiveNetworkAdapter();
                 if (string.IsNullOrEmpty(networkAdapter))
                 {
                     MessageBox.Show("No active network adapter found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    this.IsEnabled = true;
+                    Mouse.OverrideCursor = null;
                     return;
                 }
 
-                bool dnsSet;
-                if (selectedDns.Title == AutomaticDnsTitle)
+                bool dnsSet = false;
+                await Task.Run(() =>
                 {
-                    dnsSet = ResetDns(networkAdapter);
-                }
-                else
-                {
-                    dnsSet = SetDns(networkAdapter, selectedDns.PrimaryDns, selectedDns.SecondaryDns);
-                }
+                    if (selectedDns.Title == AutomaticDnsTitle)
+                    {
+                        dnsSet = ResetDns(networkAdapter);
+                    }
+                    else
+                    {
+                        dnsSet = SetDns(networkAdapter, selectedDns.PrimaryDns, selectedDns.SecondaryDns);
+                    }
+                });
+
+                this.IsEnabled = true;
+                Mouse.OverrideCursor = null;
 
                 if (dnsSet)
                 {
@@ -121,6 +133,7 @@ namespace DNSChanger
                 }
             }
         }
+
 
         /// <summary>
         /// Handles the click event for deleting the selected DNS entry.
@@ -187,20 +200,22 @@ namespace DNSChanger
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/C netsh interface ip set dns name=\"{adapterName}\" static {primaryDns}",
+                    FileName = "netsh.exe",
+                    Arguments = $"interface ip set dns name=\"{adapterName}\" static {primaryDns}",
                     Verb = "runas",
                     CreateNoWindow = true,
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
                 })?.WaitForExit();
 
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/C netsh interface ip add dns name=\"{adapterName}\" {secondaryDns} index=2",
+                    FileName = "netsh.exe",
+                    Arguments = $"interface ip add dns name=\"{adapterName}\" {secondaryDns} index=2",
                     Verb = "runas",
                     CreateNoWindow = true,
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
                 })?.WaitForExit();
 
                 return true;
@@ -220,11 +235,12 @@ namespace DNSChanger
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/C netsh interface ip set dns name=\"{adapterName}\" dhcp",
+                    FileName = "netsh.exe",
+                    Arguments = $"interface ip set dns name=\"{adapterName}\" dhcp",
                     Verb = "runas",
                     CreateNoWindow = true,
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
                 })?.WaitForExit();
 
                 return true;
