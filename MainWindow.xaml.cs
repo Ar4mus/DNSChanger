@@ -17,7 +17,29 @@ namespace DNSChanger
             InitializeComponent();
             LoadDnsEntries();
             DisplayCurrentDns(); // Display current DNS on startup
+            LoadNetworkAdapters();
+
         }
+
+        /// <summary>
+        /// Retrieves all active (connected) network adapters from the system and populates the NetworkAdapterComboBox with their names.
+        /// Only adapters with a "Connected" status are displayed.
+        /// </summary>
+        private void LoadNetworkAdapters()
+        {
+            NetworkAdapterComboBox.Items.Clear();
+            string query = "SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2";
+            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher(query))
+            {
+                foreach (ManagementObject adapter in searcher.Get())
+                {
+                    var name = adapter["NetConnectionID"]?.ToString();
+                    if (!string.IsNullOrEmpty(name))
+                        NetworkAdapterComboBox.Items.Add(name);
+                }
+            }
+        }
+
 
         /// <summary>
         /// Loads DNS entries from the JSON file and populates the ComboBox.
@@ -96,10 +118,10 @@ namespace DNSChanger
 
             if (DnsComboBox.SelectedItem is DnsEntry selectedDns)
             {
-                string networkAdapter = GetActiveNetworkAdapter();
+                string networkAdapter = NetworkAdapterComboBox.SelectedItem as string;
                 if (string.IsNullOrEmpty(networkAdapter))
                 {
-                    MessageBox.Show("No active network adapter found.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("Please select a network adapter.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     this.IsEnabled = true;
                     Mouse.OverrideCursor = null;
                     return;
@@ -123,13 +145,13 @@ namespace DNSChanger
 
                 if (dnsSet)
                 {
-                    MessageBox.Show($"DNS Updated: {selectedDns.Title}",
-                                    "DNS Set Successfully", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"DNS '{networkAdapter}' changed to '{selectedDns.Title}'.",
+                                    "Successful change", MessageBoxButton.OK, MessageBoxImage.Information);
                     DisplayCurrentDns();
                 }
                 else
                 {
-                    MessageBox.Show("Failed to set DNS.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("DNS change failed.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
