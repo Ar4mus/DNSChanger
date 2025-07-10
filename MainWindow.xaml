@@ -9,11 +9,21 @@
     <Grid>
         <Border BorderBrush="Black" BorderThickness="0 1 0 0" HorizontalAlignment="Center" Height="3" Margin="0,53,0,0" VerticalAlignment="Top" Width="450"/>
         <Button Content="Add New DNS" Click="AddDnsButton_Click" HorizontalAlignment="Left" Width="121" Margin="10,12,0,0" VerticalAlignment="Top" Height="31"/>
-        <Label Content="Current DNS" Name="CurrentDns" Margin="75,78,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Left" Width="300"/>
-        <Label Content="Select Network Adapter :" Name="NetworkAdapterlbl" Margin="0,126,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
-        <ComboBox Name="NetworkAdapterComboBox" FontSize="14" Width="300" Height="30" Margin="0,161,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"/>
-        <Label Content="Select Dns :" Name="Dnslbl" Margin="0,207,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
-        <ComboBox Name="DnsComboBox" FontSize="14" Width="300" Height="30" Margin="0,242,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+        <TextBlock Name="CurrentDns" 
+           Margin="0,71,0,0" 
+           Height="64" 
+           VerticalAlignment="Top" 
+           HorizontalAlignment="Center" 
+           Width="300"
+           TextWrapping="Wrap"
+           TextAlignment="Center"
+           >
+    Current DNS
+        </TextBlock>
+        <Label Content="Select Network Adapter :" Name="NetworkAdapterlbl" Margin="0,140,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
+        <ComboBox Name="NetworkAdapterComboBox" FontSize="14" Width="300" Height="30" Margin="0,175,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"  SelectionChanged="NetworkAdapterComboBox_SelectionChanged"/>
+        <Label Content="Select Dns :" Name="Dnslbl" Margin="0,221,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
+        <ComboBox Name="DnsComboBox" FontSize="14" Width="300" Height="30" Margin="0,256,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"/>
 
         <!-- Buttons for actions -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,326,0,0" Height="41" VerticalAlignment="Top">
