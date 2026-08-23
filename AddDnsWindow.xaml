@@ -9,7 +9,7 @@
         <TextBlock Text="Primary DNS:" FontSize="14" Height="25" Margin="10,75,10,184"/>
         <TextBox Name="PrimaryDnsTextBox" Margin="10,105,10,154" FontSize="14" Height="25"/>
 
-        <TextBlock Text="Secondary DNS:" FontSize="14" Height="25" Margin="10,149,10,110"/>
+        <TextBlock Text="Secondary DNS (Optional):" FontSize="14" Height="25" Margin="10,149,10,110"/>
         <TextBox Name="SecondaryDnsTextBox" Margin="10,172,10,87" FontSize="14" Height="25"/>
 
 

@@ -29,19 +29,25 @@ namespace DNSChanger
         /// </summary>
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            // Check if any field is empty
+            // Check if required fields are empty
             if (string.IsNullOrWhiteSpace(TitleTextBox.Text) ||
-                string.IsNullOrWhiteSpace(PrimaryDnsTextBox.Text) ||
-                string.IsNullOrWhiteSpace(SecondaryDnsTextBox.Text))
+                string.IsNullOrWhiteSpace(PrimaryDnsTextBox.Text))
             {
-                MessageBox.Show("All fields are required.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Title and Primary DNS are required.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // Validate DNS IP addresses
-            if (!IsValidIp(PrimaryDnsTextBox.Text) || !IsValidIp(SecondaryDnsTextBox.Text))
+            // Validate Primary DNS IP address
+            if (!IsValidIp(PrimaryDnsTextBox.Text))
             {
-                MessageBox.Show("Invalid DNS address. Please enter a valid IP.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Invalid Primary DNS address. Please enter a valid IP.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Validate Secondary DNS IP address if provided
+            if (!string.IsNullOrWhiteSpace(SecondaryDnsTextBox.Text) && !IsValidIp(SecondaryDnsTextBox.Text))
+            {
+                MessageBox.Show("Invalid Secondary DNS address. Please enter a valid IP.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
