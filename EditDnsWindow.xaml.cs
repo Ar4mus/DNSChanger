@@ -7,7 +7,7 @@ namespace DNSChanger
     public partial class EditDnsWindow : Window
     {
         // Property to store the updated DNS entry
-        public DnsEntry UpdatedDnsEntry { get; private set; }
+        public DnsEntry UpdatedDnsEntry { get; private set; } = new();
 
         public EditDnsWindow()
         {

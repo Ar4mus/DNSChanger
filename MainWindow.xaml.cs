@@ -13,7 +13,7 @@ namespace DNSChanger
     /// </summary>
     public partial class MainWindow : Window
     {
-        private List<DnsEntry> _dnsEntries;
+        private List<DnsEntry> _dnsEntries = new();
         private const string AutomaticDnsTitle = "Automatic";
         private const int ProcessTimeoutSeconds = 30;
 
@@ -88,7 +88,7 @@ namespace DNSChanger
         /// </summary>
         private void DisplayCurrentDns()
         {
-            string adapterName = NetworkAdapterComboBox.SelectedItem as string;
+            string adapterName = NetworkAdapterComboBox.SelectedItem as string ?? string.Empty;
             if (string.IsNullOrEmpty(adapterName))
             {
                 CurrentDns.Text = "Current DNS: Unknown";
@@ -135,8 +135,8 @@ namespace DNSChanger
                 {
                     foreach (ManagementObject config in configSearcher.Get())
                     {
-                        string[] dnses = config["DNSServerSearchOrder"] as string[];
-                        if (dnses != null && dnses.Length > 0)
+                        string[] dnses = config["DNSServerSearchOrder"] as string[] ?? Array.Empty<string>();
+                        if (dnses.Length > 0)
                             return string.Join(", ", dnses);
                         else
                             return "Automatic (DHCP)";
@@ -168,7 +168,7 @@ namespace DNSChanger
                 return;
             }
 
-            string networkAdapter = NetworkAdapterComboBox.SelectedItem as string;
+            string networkAdapter = NetworkAdapterComboBox.SelectedItem as string ?? string.Empty;
             if (string.IsNullOrEmpty(networkAdapter))
             {
                 MessageBox.Show("Please select a network adapter.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -363,7 +363,7 @@ namespace DNSChanger
             {
                 foreach (ManagementObject adapter in searcher.Get())
                 {
-                    return adapter["NetConnectionID"]?.ToString();
+                    return adapter["NetConnectionID"]?.ToString() ?? string.Empty;
                 }
             }
             return string.Empty;
@@ -380,7 +380,7 @@ namespace DNSChanger
         /// <returns>True if the DNS configuration was successful, false otherwise.</returns>
         public bool SetDns(string adapterName, string primaryDns, string secondaryDns)
         {
-            string batchFile = null;
+            string batchFile = string.Empty;
 
             try
             {

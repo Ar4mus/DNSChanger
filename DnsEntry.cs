@@ -8,17 +8,17 @@ public class DnsEntry
     /// <summary>
     /// Gets or sets the title of the DNS entry.
     /// </summary>
-    public string Title { get; set; }
+    public string Title { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the primary DNS address.
     /// </summary>
-    public string PrimaryDns { get; set; }
+    public string PrimaryDns { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the secondary DNS address.
     /// </summary>
-    public string SecondaryDns { get; set; }
+    public string SecondaryDns { get; set; } = string.Empty;
 
     /// <summary>
     /// Returns a string representation of the DNS entry.
