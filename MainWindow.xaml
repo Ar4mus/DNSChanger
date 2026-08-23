@@ -1,4 +1,4 @@
-﻿<Window x:Class="DNSChanger.MainWindow"
+<Window x:Class="DNSChanger.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -27,8 +27,9 @@
 
         <!-- Buttons for actions -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,326,0,0" Height="41" VerticalAlignment="Top">
-            <Button Content="Set DNS" Width="100" Margin="5" Click="SetDnsButton_Click"/>
-            <Button Content="Delete" Width="100" Margin="5" Click="DeleteDnsButton_Click"/>
+            <Button Content="Set DNS" Width="90" Margin="5" Click="SetDnsButton_Click"/>
+            <Button Content="Edit" Width="90" Margin="5" Click="EditDnsButton_Click"/>
+            <Button Content="Delete" Width="90" Margin="5" Click="DeleteDnsButton_Click"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -1,8 +1,9 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Diagnostics;
 using System.Management;
 using System.Windows.Input;
+using System.IO;
 
 namespace DNSChanger
 {
@@ -14,6 +15,7 @@ namespace DNSChanger
     {
         private List<DnsEntry> _dnsEntries;
         private const string AutomaticDnsTitle = "Automatic";
+        private const int ProcessTimeoutSeconds = 30;
 
         /// <summary>
         /// Initializes a new instance of the MainWindow class.
@@ -153,45 +155,43 @@ namespace DNSChanger
         /// Handles the click event for the Set DNS button.
         /// Applies the selected DNS configuration to the chosen network adapter.
         /// If 'Automatic' is selected, resets DNS settings to DHCP.
-        /// Uses asynchronous execution to prevent UI freezing during DNS changes.
+        /// Uses asynchronous execution with timeout to prevent UI freezing during DNS changes.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">Event data for the button click.</param>
         private async void SetDnsButton_Click(object sender, RoutedEventArgs e)
         {
+            // Validate selections
+            if (DnsComboBox.SelectedItem is not DnsEntry selectedDns)
+            {
+                MessageBox.Show("Please select a DNS entry.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            string networkAdapter = NetworkAdapterComboBox.SelectedItem as string;
+            if (string.IsNullOrEmpty(networkAdapter))
+            {
+                MessageBox.Show("Please select a network adapter.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             // Show loading cursor and disable UI during operation
             Mouse.OverrideCursor = Cursors.Wait;
             this.IsEnabled = false;
 
-            if (DnsComboBox.SelectedItem is DnsEntry selectedDns)
+            try
             {
-                string networkAdapter = NetworkAdapterComboBox.SelectedItem as string;
-                if (string.IsNullOrEmpty(networkAdapter))
+                bool dnsSet;
+
+                // Execute DNS change operation asynchronously with timeout
+                if (selectedDns.Title == AutomaticDnsTitle)
                 {
-                    MessageBox.Show("Please select a network adapter.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    this.IsEnabled = true;
-                    Mouse.OverrideCursor = null;
-                    return;
+                    dnsSet = await ExecuteDnsChangeAsync(() => ResetDns(networkAdapter));
                 }
-
-                bool dnsSet = false;
-
-                // Execute DNS change operation asynchronously
-                await Task.Run(() =>
+                else
                 {
-                    if (selectedDns.Title == AutomaticDnsTitle)
-                    {
-                        dnsSet = ResetDns(networkAdapter);
-                    }
-                    else
-                    {
-                        dnsSet = SetDns(networkAdapter, selectedDns.PrimaryDns, selectedDns.SecondaryDns);
-                    }
-                });
-
-                // Restore UI state
-                this.IsEnabled = true;
-                Mouse.OverrideCursor = null;
+                    dnsSet = await ExecuteDnsChangeAsync(() => SetDns(networkAdapter, selectedDns.PrimaryDns, selectedDns.SecondaryDns));
+                }
 
                 // Show result message and update display
                 if (dnsSet)
@@ -202,8 +202,44 @@ namespace DNSChanger
                 }
                 else
                 {
-                    MessageBox.Show("DNS change failed.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("DNS change failed. Please make sure you run the application as Administrator.",
+                                   "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+            }
+            catch (TimeoutException)
+            {
+                MessageBox.Show($"DNS change operation timed out after {ProcessTimeoutSeconds} seconds. Please try again.",
+                               "Timeout", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}",
+                               "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Restore UI state
+                this.IsEnabled = true;
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        /// <summary>
+        /// Executes a DNS change operation asynchronously with a timeout.
+        /// </summary>
+        /// <param name="operation">The DNS change operation to execute.</param>
+        /// <returns>True if the operation succeeded within the timeout, false otherwise.</returns>
+        private async Task<bool> ExecuteDnsChangeAsync(Func<bool> operation)
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(ProcessTimeoutSeconds));
+
+            try
+            {
+                return await Task.Run(() => operation(), cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                throw new TimeoutException();
             }
         }
 
@@ -234,6 +270,65 @@ namespace DNSChanger
                     _dnsEntries.Remove(selectedDns);
                     FileHandler.SaveDnsEntries(_dnsEntries);
                     LoadDnsEntries(); // Refresh UI after deletion
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the click event for the Edit DNS button.
+        /// Opens the Edit DNS window dialog for updating the selected DNS entry.
+        /// If the entry is successfully updated, updates the list, saves to file, and refreshes the UI.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">Event data for the button click.</param>
+        private void EditDnsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DnsComboBox.SelectedItem is not DnsEntry selectedDns)
+            {
+                MessageBox.Show("Please select a DNS entry to edit.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Prevent editing the automatic option
+            if (selectedDns.Title == AutomaticDnsTitle)
+            {
+                MessageBox.Show("The 'Automatic' option cannot be edited.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var editDnsWindow = new EditDnsWindow(selectedDns);
+            if (editDnsWindow.ShowDialog() == true)
+            {
+                int index = _dnsEntries.IndexOf(selectedDns);
+                if (index != -1)
+                {
+                    _dnsEntries[index] = editDnsWindow.UpdatedDnsEntry;
+                }
+                else
+                {
+                    // Fallback in case of reference mismatch: match by properties
+                    var existing = _dnsEntries.FirstOrDefault(d => d.Title == selectedDns.Title && d.PrimaryDns == selectedDns.PrimaryDns && d.SecondaryDns == selectedDns.SecondaryDns);
+                    if (existing != null)
+                    {
+                        existing.Title = editDnsWindow.UpdatedDnsEntry.Title;
+                        existing.PrimaryDns = editDnsWindow.UpdatedDnsEntry.PrimaryDns;
+                        existing.SecondaryDns = editDnsWindow.UpdatedDnsEntry.SecondaryDns;
+                    }
+                }
+
+                FileHandler.SaveDnsEntries(_dnsEntries);
+                LoadDnsEntries(); // Refresh UI with updated DNS entries
+
+                // Re-select the updated entry in the ComboBox
+                foreach (var item in DnsComboBox.Items)
+                {
+                    if (item is DnsEntry entry && entry.Title == editDnsWindow.UpdatedDnsEntry.Title &&
+                        entry.PrimaryDns == editDnsWindow.UpdatedDnsEntry.PrimaryDns &&
+                        entry.SecondaryDns == editDnsWindow.UpdatedDnsEntry.SecondaryDns)
+                    {
+                        DnsComboBox.SelectedItem = entry;
+                        break;
+                    }
                 }
             }
         }
@@ -276,7 +371,7 @@ namespace DNSChanger
 
         /// <summary>
         /// Sets the primary and secondary DNS servers for the specified network adapter.
-        /// Uses the Windows netsh command-line utility with elevated privileges.
+        /// Uses a temporary batch file to combine both commands, reducing UAC prompts.
         /// Requires administrator rights to execute successfully.
         /// </summary>
         /// <param name="adapterName">The name of the network adapter to configure.</param>
@@ -285,35 +380,70 @@ namespace DNSChanger
         /// <returns>True if the DNS configuration was successful, false otherwise.</returns>
         public bool SetDns(string adapterName, string primaryDns, string secondaryDns)
         {
+            string batchFile = null;
+
             try
             {
-                // Set primary DNS server
-                Process.Start(new ProcessStartInfo
+                // Create a temporary batch file to combine both DNS commands
+                // This reduces UAC prompts from 2 to 1
+                batchFile = Path.Combine(Path.GetTempPath(), $"setdns_{Guid.NewGuid()}.bat");
+
+                string batchContent = $@"@echo off
+netsh interface ip set dns name=""{adapterName}"" static {primaryDns}
+netsh interface ip add dns name=""{adapterName}"" {secondaryDns} index=2
+exit /b 0";
+
+                File.WriteAllText(batchFile, batchContent);
+
+                // Execute the batch file with administrator privileges
+                var process = Process.Start(new ProcessStartInfo
                 {
-                    FileName = "netsh.exe",
-                    Arguments = $"interface ip set dns name=\"{adapterName}\" static {primaryDns}",
+                    FileName = batchFile,
                     Verb = "runas", // Request administrator privileges
                     CreateNoWindow = true,
                     UseShellExecute = true,
                     WindowStyle = ProcessWindowStyle.Hidden
-                })?.WaitForExit();
+                });
 
-                // Add secondary DNS server
-                Process.Start(new ProcessStartInfo
+                if (process == null)
+                    return false;
+
+                // Wait for process to complete with timeout
+                bool exited = process.WaitForExit(ProcessTimeoutSeconds * 1000);
+
+                if (!exited)
                 {
-                    FileName = "netsh.exe",
-                    Arguments = $"interface ip add dns name=\"{adapterName}\" {secondaryDns} index=2",
-                    Verb = "runas", // Request administrator privileges
-                    CreateNoWindow = true,
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                })?.WaitForExit();
+                    // If timeout occurs, kill the process
+                    try { process.Kill(); } catch { }
+                    return false;
+                }
 
-                return true;
+                // Check exit code (0 means success)
+                return process.ExitCode == 0;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // User cancelled UAC prompt
+                return false;
             }
             catch
             {
                 return false;
+            }
+            finally
+            {
+                // Clean up the temporary batch file
+                if (batchFile != null)
+                {
+                    try
+                    {
+                        // Small delay to ensure process has released the file
+                        System.Threading.Thread.Sleep(100);
+                        if (File.Exists(batchFile))
+                            File.Delete(batchFile);
+                    }
+                    catch { /* Ignore cleanup errors */ }
+                }
             }
         }
 
@@ -328,7 +458,7 @@ namespace DNSChanger
         {
             try
             {
-                Process.Start(new ProcessStartInfo
+                var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = "netsh.exe",
                     Arguments = $"interface ip set dns name=\"{adapterName}\" dhcp",
@@ -336,9 +466,28 @@ namespace DNSChanger
                     CreateNoWindow = true,
                     UseShellExecute = true,
                     WindowStyle = ProcessWindowStyle.Hidden
-                })?.WaitForExit();
+                });
 
-                return true;
+                if (process == null)
+                    return false;
+
+                // Wait for process to complete with timeout
+                bool exited = process.WaitForExit(ProcessTimeoutSeconds * 1000);
+
+                if (!exited)
+                {
+                    // If timeout occurs, kill the process
+                    try { process.Kill(); } catch { }
+                    return false;
+                }
+
+                // Check exit code (0 means success)
+                return process.ExitCode == 0;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // User cancelled UAC prompt
+                return false;
             }
             catch
             {
