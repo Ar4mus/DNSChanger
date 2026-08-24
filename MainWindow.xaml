@@ -5,31 +5,125 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DNSChanger"
         mc:Ignorable="d"
-        Title="DNS Changer" Height="430" Width="450" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
-    <Grid>
-        <Border BorderBrush="Black" BorderThickness="0 1 0 0" HorizontalAlignment="Center" Height="3" Margin="0,53,0,0" VerticalAlignment="Top" Width="450"/>
-        <Button Content="Add New DNS" Click="AddDnsButton_Click" HorizontalAlignment="Left" Width="121" Margin="10,12,0,0" VerticalAlignment="Top" Height="31"/>
-        <TextBlock Name="CurrentDns" 
-           Margin="0,71,0,0" 
-           Height="64" 
-           VerticalAlignment="Top" 
-           HorizontalAlignment="Center" 
-           Width="300"
-           TextWrapping="Wrap"
-           TextAlignment="Center"
-           >
-    Current DNS
-        </TextBlock>
-        <Label Content="Select Network Adapter :" Name="NetworkAdapterlbl" Margin="0,140,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
-        <ComboBox Name="NetworkAdapterComboBox" FontSize="14" Width="300" Height="30" Margin="0,175,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"  SelectionChanged="NetworkAdapterComboBox_SelectionChanged"/>
-        <Label Content="Select Dns :" Name="Dnslbl" Margin="0,221,0,0" Height="30" VerticalAlignment="Top" HorizontalAlignment="Center" Width="300"/>
-        <ComboBox Name="DnsComboBox" FontSize="14" Width="300" Height="30" Margin="0,256,0,0" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+        Title="DNS Changer" Height="530" Width="500"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        FontFamily="Segoe UI" Icon="/dns.ico">
+    <Grid Margin="28">
+        <Border CornerRadius="14"
+                Background="{StaticResource BgBrush}"
+                BorderBrush="{StaticResource StrokeBrush}"
+                BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="26" ShadowDepth="6" Direction="270" Opacity="0.55"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="46"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-        <!-- Buttons for actions -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,326,0,0" Height="41" VerticalAlignment="Top">
-            <Button Content="Set DNS" Width="90" Margin="5" Click="SetDnsButton_Click"/>
-            <Button Content="Edit" Width="90" Margin="5" Click="EditDnsButton_Click"/>
-            <Button Content="Delete" Width="90" Margin="5" Click="DeleteDnsButton_Click"/>
-        </StackPanel>
+                <!-- Title bar -->
+                <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Border VerticalAlignment="Bottom" Height="1" Background="{StaticResource StrokeBrush}"/>
+                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <Image Source="/dns.ico" Width="17" Height="17" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="DNS Changer" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource CloseWindowButton}" Content="&#xE8BB;" Click="CloseButton_Click"
+                            HorizontalAlignment="Right" ToolTip="Close"/>
+                </Grid>
+
+                <!-- Content -->
+                <Grid Grid.Row="1" Margin="24,20,24,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="18"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="16"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Current DNS card -->
+                    <Border Grid.Row="0"
+                            CornerRadius="12"
+                            Background="{StaticResource CardBrush}"
+                            BorderBrush="{StaticResource StrokeBrush}"
+                            BorderThickness="1"
+                            Padding="16,14">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE774;" FontSize="12"
+                                           Foreground="{StaticResource AccentLightBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="CURRENT DNS" Style="{StaticResource CaptionText}" Margin="8,1,0,0"/>
+                            </StackPanel>
+                            <TextBlock x:Name="AdapterNameText" Text="&#x2014;"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="1,9,0,0"/>
+                            <TextBlock x:Name="CurrentDns" Text="Loading..."
+                                       FontSize="12.5"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="1,4,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Network adapter -->
+                    <TextBlock Grid.Row="2" Text="NETWORK ADAPTER" Style="{StaticResource CaptionText}" Margin="1,0,0,8"/>
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Name="NetworkAdapterComboBox" SelectionChanged="NetworkAdapterComboBox_SelectionChanged"/>
+                        <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="&#xE72C;"
+                                Margin="8,0,0,0" Click="RefreshAdaptersButton_Click" ToolTip="Refresh adapters"/>
+                    </Grid>
+
+                    <!-- DNS configuration -->
+                    <Grid Grid.Row="5" Margin="1,0,0,8">
+                        <TextBlock Text="DNS CONFIGURATION" Style="{StaticResource CaptionText}"/>
+                        <Button Style="{StaticResource GhostButton}" Height="28" Click="AddDnsButton_Click"
+                                HorizontalAlignment="Right" ToolTip="Save a new DNS configuration">
+                            <StackPanel Orientation="Horizontal" Margin="11,0">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="10"
+                                           Foreground="{StaticResource AccentLightBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="ADD NEW" Style="{StaticResource CaptionText}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <ComboBox Name="DnsComboBox" Grid.Row="6"/>
+
+                    <!-- Actions -->
+                    <Grid Grid.Row="7" Margin="0,22,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PrimaryButton}" Height="42" Click="SetDnsButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Set DNS" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Width="102" Height="42" Margin="10,0,0,0" Click="EditDnsButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="Edit" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" Style="{StaticResource DangerButton}" Width="102" Height="42" Margin="10,0,0,0" Click="DeleteDnsButton_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="Delete" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

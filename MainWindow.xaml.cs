@@ -45,7 +45,7 @@ namespace DNSChanger
         /// Only adapters with a "Connected" status (NetConnectionStatus = 2) are displayed.
         /// Uses WMI queries to enumerate network adapters.
         /// </summary>
-        private void LoadNetworkAdapters()
+        private void LoadNetworkAdapters(string? preferredAdapter = null)
         {
             NetworkAdapterComboBox.Items.Clear();
             string query = "SELECT * FROM Win32_NetworkAdapter WHERE NetConnectionStatus = 2";
@@ -59,6 +59,43 @@ namespace DNSChanger
                         NetworkAdapterComboBox.Items.Add(name);
                 }
             }
+
+            int preferredIndex = preferredAdapter != null ? NetworkAdapterComboBox.Items.IndexOf(preferredAdapter) : -1;
+            if (preferredIndex >= 0)
+                NetworkAdapterComboBox.SelectedIndex = preferredIndex;
+            else if (NetworkAdapterComboBox.Items.Count > 0)
+                NetworkAdapterComboBox.SelectedIndex = 0;
+        }
+
+        /// <summary>
+        /// Handles the click event for the refresh adapters button.
+        /// Reloads the adapter list while preserving the current selection when possible.
+        /// </summary>
+        private void RefreshAdaptersButton_Click(object sender, RoutedEventArgs e)
+        {
+            LoadNetworkAdapters(NetworkAdapterComboBox.SelectedItem as string);
+        }
+
+        /// <summary>
+        /// Enables dragging the borderless window via its custom title bar.
+        /// </summary>
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                DragMove();
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        /// <summary>
+        /// Handles the click event for the custom close button.
+        /// </summary>
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         /// <summary>
@@ -91,12 +128,13 @@ namespace DNSChanger
             string adapterName = NetworkAdapterComboBox.SelectedItem as string ?? string.Empty;
             if (string.IsNullOrEmpty(adapterName))
             {
-                CurrentDns.Text = "Current DNS: Unknown";
+                AdapterNameText.Text = "No adapter selected";
+                CurrentDns.Text = "Select a network adapter to view its DNS servers.";
                 return;
             }
 
-            string currentDns = GetCurrentDns(adapterName);
-            CurrentDns.Text = $"Current DNS for '{adapterName}' is: {currentDns}";
+            AdapterNameText.Text = adapterName;
+            CurrentDns.Text = GetCurrentDns(adapterName);
         }
 
         /// <summary>
@@ -296,7 +334,7 @@ namespace DNSChanger
                 return;
             }
 
-            var editDnsWindow = new EditDnsWindow(selectedDns);
+            var editDnsWindow = new EditDnsWindow(selectedDns) { Owner = this };
             if (editDnsWindow.ShowDialog() == true)
             {
                 int index = _dnsEntries.IndexOf(selectedDns);
@@ -342,7 +380,7 @@ namespace DNSChanger
         /// <param name="e">Event data for the button click.</param>
         private void AddDnsButton_Click(object sender, RoutedEventArgs e)
         {
-            var addDnsWindow = new AddDnsWindow();
+            var addDnsWindow = new AddDnsWindow { Owner = this };
             if (addDnsWindow.ShowDialog() == true)
             {
                 _dnsEntries.Add(addDnsWindow.NewDnsEntry);

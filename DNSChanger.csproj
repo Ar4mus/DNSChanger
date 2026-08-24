@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="dns.ico" />
+    <Resource Include="dns.ico" />
   </ItemGroup>
 
   <ItemGroup>
