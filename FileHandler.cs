@@ -7,9 +7,21 @@ using System.Text.Json;
 public static class FileHandler
 {
     /// <summary>
-    /// The file path where DNS settings are stored.
+    /// The file path where DNS settings are stored under %APPDATA%\DNSChanger.
+    /// A fixed location is used because the current directory is not reliable
+    /// for an elevated app (it can become C:\Windows\System32 when started
+    /// from Task Scheduler or certain shortcuts).
     /// </summary>
-    private static string FilePath => Path.Combine(Directory.GetCurrentDirectory(), "dns_settings.json");
+    private static string FilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "DNSChanger",
+        "dns_settings.json");
+
+    /// <summary>
+    /// Legacy location of the settings file next to the executable.
+    /// Used only to migrate existing user settings once.
+    /// </summary>
+    private static string LegacyFilePath => Path.Combine(AppContext.BaseDirectory, "dns_settings.json");
 
     /// <summary>
     /// Default list of DNSs
@@ -38,10 +50,25 @@ public static class FileHandler
 
     /// <summary>
     /// Loads the list of DNS entries from the JSON file.
+    /// Falls back to the defaults if the file is missing or corrupt.
     /// </summary>
-    /// <returns>A list of DnsEntry objects. Returns an empty list if the file does not exist or contains invalid data.</returns>
+    /// <returns>A list of DnsEntry objects.</returns>
     public static List<DnsEntry> LoadDnsEntries()
     {
+        // One-time migration from versions that stored settings next to the executable
+        if (!File.Exists(FilePath) && File.Exists(LegacyFilePath))
+        {
+            try
+            {
+                Directory.CreateDirectory(GetSettingsDirectory());
+                File.Copy(LegacyFilePath, FilePath, overwrite: false);
+            }
+            catch
+            {
+                // Migration is best-effort; continue with a normal load
+            }
+        }
+
         // If the file does not exist, save the defaults
         if (!File.Exists(FilePath))
         {
@@ -49,8 +76,30 @@ public static class FileHandler
             return DefaultDnsEntries;
         }
 
-        string json = File.ReadAllText(FilePath);
-        return JsonSerializer.Deserialize<List<DnsEntry>>(json) ?? new List<DnsEntry>();
+        try
+        {
+            string json = File.ReadAllText(FilePath);
+            var entries = JsonSerializer.Deserialize<List<DnsEntry>>(json);
+
+            // Drop null items and normalize null properties so the ComboBox never receives broken data
+            return (entries ?? new List<DnsEntry>())
+                .OfType<DnsEntry>()
+                .Select(entry => new DnsEntry
+                {
+                    Title = entry.Title ?? string.Empty,
+                    PrimaryDns = entry.PrimaryDns ?? string.Empty,
+                    SecondaryDns = entry.SecondaryDns ?? string.Empty
+                })
+                .ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            // Preserve the corrupt file for inspection instead of crashing at startup
+            BackupCorruptFile();
+
+            SaveDnsEntries(DefaultDnsEntries);
+            return DefaultDnsEntries;
+        }
     }
 
     /// <summary>
@@ -59,8 +108,30 @@ public static class FileHandler
     /// <param name="entries">The list of DNS entries to save.</param>
     public static void SaveDnsEntries(List<DnsEntry> entries)
     {
+        Directory.CreateDirectory(GetSettingsDirectory());
         string json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(FilePath, json);
     }
 
+    private static string GetSettingsDirectory()
+    {
+        return Path.GetDirectoryName(FilePath)!;
+    }
+
+    /// <summary>
+    /// Renames the corrupt settings file so it can be inspected later.
+    /// </summary>
+    private static void BackupCorruptFile()
+    {
+        try
+        {
+            Directory.CreateDirectory(GetSettingsDirectory());
+            string backupPath = FilePath + ".corrupt-bak";
+            File.Move(FilePath, backupPath, overwrite: true);
+        }
+        catch
+        {
+            // Best-effort only
+        }
+    }
 }

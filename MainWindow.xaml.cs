@@ -263,22 +263,45 @@ namespace DNSChanger
         }
 
         /// <summary>
-        /// Executes a DNS change operation asynchronously with a timeout.
+        /// Executes a DNS change operation asynchronously so the UI remains responsive.
+        /// The timeout is enforced inside the operation itself and only covers the
+        /// elevated command execution (UAC prompt time is excluded).
         /// </summary>
         /// <param name="operation">The DNS change operation to execute.</param>
-        /// <returns>True if the operation succeeded within the timeout, false otherwise.</returns>
+        /// <returns>True if the operation succeeded, false otherwise.</returns>
         private async Task<bool> ExecuteDnsChangeAsync(Func<bool> operation)
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(ProcessTimeoutSeconds));
+            return await Task.Run(operation);
+        }
+
+        /// <summary>
+        /// Waits for the elevated process to exit within the configured timeout.
+        /// Must be called after Process.Start has returned, so any UAC prompt delay
+        /// is excluded from the timeout budget. On timeout the process is killed
+        /// and a TimeoutException is thrown.
+        /// </summary>
+        /// <param name="process">The elevated process to wait for.</param>
+        /// <returns>True if the process exited with exit code 0, false otherwise.</returns>
+        /// <exception cref="TimeoutException">The process did not exit within the timeout.</exception>
+        private static bool WaitForElevatedProcessExit(Process process)
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(ProcessTimeoutSeconds));
 
             try
             {
-                return await Task.Run(() => operation(), cts.Token);
+                while (!process.WaitForExit(200))
+                {
+                    timeoutCts.Token.ThrowIfCancellationRequested();
+                }
             }
             catch (OperationCanceledException)
             {
+                try { process.Kill(); } catch { }
                 throw new TimeoutException();
             }
+
+            // Check exit code (0 means success)
+            return process.ExitCode == 0;
         }
 
         /// <summary>
@@ -426,14 +449,27 @@ namespace DNSChanger
                 // This reduces UAC prompts from 2 to 1
                 batchFile = Path.Combine(Path.GetTempPath(), $"setdns_{Guid.NewGuid()}.bat");
 
-                string batchContent = $@"@echo off
-netsh interface ip set dns name=""{adapterName}"" static {primaryDns}
-netsh interface ip add dns name=""{adapterName}"" {secondaryDns} index=2
-exit /b 0";
+                // Each netsh failure must propagate as a non-zero exit code
+                var lines = new List<string>
+                {
+                    "@echo off",
+                    $"netsh interface ip set dns name=\"{adapterName}\" static {primaryDns}",
+                    "if errorlevel 1 exit /b 1"
+                };
 
-                File.WriteAllText(batchFile, batchContent);
+                // Only add the secondary DNS when one is provided
+                if (!string.IsNullOrWhiteSpace(secondaryDns))
+                {
+                    lines.Add($"netsh interface ip add dns name=\"{adapterName}\" {secondaryDns} index=2");
+                    lines.Add("if errorlevel 1 exit /b 2");
+                }
 
-                // Execute the batch file with administrator privileges
+                lines.Add("exit /b 0");
+                File.WriteAllText(batchFile, string.Join("\r\n", lines));
+
+                // Execute the batch file with administrator privileges.
+                // Process.Start blocks until the UAC prompt is resolved,
+                // so the timeout only starts counting after approval.
                 var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = batchFile,
@@ -446,23 +482,16 @@ exit /b 0";
                 if (process == null)
                     return false;
 
-                // Wait for process to complete with timeout
-                bool exited = process.WaitForExit(ProcessTimeoutSeconds * 1000);
-
-                if (!exited)
-                {
-                    // If timeout occurs, kill the process
-                    try { process.Kill(); } catch { }
-                    return false;
-                }
-
-                // Check exit code (0 means success)
-                return process.ExitCode == 0;
+                return WaitForElevatedProcessExit(process);
             }
             catch (System.ComponentModel.Win32Exception)
             {
                 // User cancelled UAC prompt
                 return false;
+            }
+            catch (TimeoutException)
+            {
+                throw;
             }
             catch
             {
@@ -509,23 +538,16 @@ exit /b 0";
                 if (process == null)
                     return false;
 
-                // Wait for process to complete with timeout
-                bool exited = process.WaitForExit(ProcessTimeoutSeconds * 1000);
-
-                if (!exited)
-                {
-                    // If timeout occurs, kill the process
-                    try { process.Kill(); } catch { }
-                    return false;
-                }
-
-                // Check exit code (0 means success)
-                return process.ExitCode == 0;
+                return WaitForElevatedProcessExit(process);
             }
             catch (System.ComponentModel.Win32Exception)
             {
                 // User cancelled UAC prompt
                 return false;
+            }
+            catch (TimeoutException)
+            {
+                throw;
             }
             catch
             {
